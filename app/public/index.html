@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style/index.css">
+    <title>Nodrix</title>
+</head>
+<body>
+    <h1>
+        <span class="logotitle">Nodrix</span>
+        <span class="metatext">-</span>
+        <span id="server-name">Node?</span>
+        <span class="metatext">-</span>
+        <span >Status</span>
+        <span class="metatext">[</span>
+        <span id="operating-status" style="background-color: var(--status-ok-bg);color: var(--status-pk);">OK</span>
+        <span class="metatext">]</span>
+    </h1>
+    <p>
+        <span class="metatext">Server</span>
+        <span id="server-platform"></span>
+        <span class="metatext">/ Nodrix</span>
+        <span id="nodrix-version">v0.0.1</span>
+        <span class="metatext">/ Ip</span>
+        <span id="server-ip"></span>
+        <span class="metatext">/ Region</span>
+        <span id="server-region"></span>
+        <span class="metatext">/ Country</span>
+        <span id="server-country"></span>
+        <span class="metatext">/ CPU</span>
+        <span id="server-cpu"></span>
+        <span class="metatext">/ RAM</span>
+        <span id="server-memory"></span>
+        <span class="metatext">/ Uptime</span>
+        <span id="server-uptime"></span>
+        <span class="metatext">/ OS uptime</span>
+        <span id="server-os-uptime"></span>
+    </p>
+
+    <table class="statisticsgrid">
+        <tr>
+            <td class="statistic">
+                <span class="metatext">Nodrix</span>
+                <canvas id="nodrix-ram-usage-graph" width="400" height="400" style="border:1px solid var(--background-color-0);"></canvas>
+                <span id="ram-usage" class="statistic-value">0%</span>
+            </td>
+            <td class="statistic">
+                <span class="metatext">RAM</span>
+                <canvas id="ram-usage-graph" width="400" height="400" style="border:1px solid var(--background-color-0);"></canvas>
+                <span id="ram-usage" class="statistic-value">0%</span>
+            </td>
+        </tr>
+        <tr>
+            <td class="fullwidth-statistic statistic">
+                <span class="metatext">CPU</span>
+                <canvas id="cpu-usage-graph" width="400" height="400" style="border:1px solid var(--background-color-0);"></canvas>
+                <span id="cpu-usage" class="statistic-value">0%</span>
+            </td>
+        </tr>
+    </table>
+
+    <p id="streamdump"></p>
+
+    <p id="server-description">Nodrix is my Node.js server node monitoring tool that provides real-time information about a server's status and performance.</p>
+
+    <script src="script/static_data.js"></script>
+    <script src="script/dynamic_data.js"></script>
+</body>
+</html>

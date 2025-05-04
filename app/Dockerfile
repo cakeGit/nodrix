@@ -1,5 +1,5 @@
 # FROM node
-FROM alpine
+FROM node
 
 WORKDIR /app
 
@@ -7,4 +7,4 @@ COPY . .
 
 RUN npm install
 
-CMD ["ls"]
+CMD ["node", "index.js"]

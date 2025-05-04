@@ -55,25 +55,32 @@ const wss = new WebSocketServer({ server, path: '/data' });
 wss.on('connection', (ws) => {
     activeConnections.add(ws);
 
+    ws.send(JSON.stringify(collectStreamData()));
+
     ws.on('close', () => {
         activeConnections.delete(ws);
     });
 });
 
-setInterval(() => {
-    if (activeConnections.size === 0) return; // No active connections
-
+function collectStreamData() {
     const data = {
         statistics_timestamp: Date.now(),
         os_cpu_usage: os.cpus().map(cpu => {
             const total = Object.values(cpu.times).reduce((acc, time) => acc + time, 0);
-            return cpu.times.idle / total;
+            return 1 - cpu.times.idle / total;
         }),
         os_memory_usage: 1 - os.freemem() / os.totalmem(),
         nodrix_memory_usage_of_os: process.memoryUsage().rss / os.totalmem(),
         nodrix_memory_allocated: `${Math.ceil(process.memoryUsage().rss / 1000000)}MB`,
         active_connections: activeConnections.size,
     }
+    return data;
+}
+
+setInterval(() => {
+    if (activeConnections.size === 0) return; // No active connections
+
+    const data = collectStreamData();
 
     for (const ws of activeConnections) {
         if (ws.readyState === ws.OPEN) {
@@ -83,4 +90,4 @@ setInterval(() => {
             activeConnections.delete(ws);
         }
     }
-}, 10000);
+}, 5000);

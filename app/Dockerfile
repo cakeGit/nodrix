@@ -1,10 +1,20 @@
+# # FROM node
 # FROM node
-FROM node
+
+# WORKDIR /app
+
+# COPY . .
+
+# RUN npm install
+
+# CMD ["node", "index.js"]
+FROM node:alpine
 
 WORKDIR /app
 
-COPY . .
+COPY package.json package-lock.json ./
+RUN npm install --production
 
-RUN npm install
+COPY . .
 
 CMD ["node", "index.js"]

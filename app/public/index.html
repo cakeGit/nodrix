@@ -21,7 +21,7 @@
         <span class="metatext">Server</span>
         <span id="server-platform"></span>
         <span class="metatext">/ Nodrix</span>
-        <span id="nodrix-version">v0.0.1</span>
+        <span id="nodrix-version">v0.1.0</span>
         <span class="metatext">/ Ip</span>
         <span id="server-ip"></span>
         <span class="metatext">/ Region</span>
@@ -39,30 +39,32 @@
     </p>
 
     <table class="statisticsgrid">
-        <tr>
-            <td class="statistic">
-                <span class="metatext">Nodrix</span>
-                <canvas id="nodrix-ram-usage-graph" width="400" height="400" style="border:1px solid var(--background-color-0);"></canvas>
-                <span id="ram-usage" class="statistic-value">0%</span>
-            </td>
-            <td class="statistic">
-                <span class="metatext">RAM</span>
-                <canvas id="ram-usage-graph" width="400" height="400" style="border:1px solid var(--background-color-0);"></canvas>
-                <span id="ram-usage" class="statistic-value">0%</span>
-            </td>
-        </tr>
-        <tr>
-            <td class="fullwidth-statistic statistic">
-                <span class="metatext">CPU</span>
-                <canvas id="cpu-usage-graph" width="400" height="400" style="border:1px solid var(--background-color-0);"></canvas>
-                <span id="cpu-usage" class="statistic-value">0%</span>
-            </td>
-        </tr>
+        <div class="statistic">
+            <span class="cattext">Nodrix</span>
+            <div class="graph"><canvas id="nodrix-os-ram-usage-chart" width="400" height="400" style="border:1px solid var(--background-color-0);"></canvas></div>
+            <span id="nodrix-ram-usage" class="statistic-value">0MB</span>
+        </div>
+        <div class="statistic">
+            <span class="cattext">RAM</span>
+            <div class="graph"><canvas id="ram-usage-chart" width="400" height="400" style="border:1px solid var(--background-color-0);"></canvas></div>
+            <span id="ram-usage" class="statistic-value">0GB</span>
+        </div>
+        <br>
+        <div class="fullwidth statistic">
+            <span class="cattext">CPU</span>
+            <div class="flexrow" style="justify-content: space-around;">
+                <div class="graph"><canvas id="cpu-usage-graph" width="800" height="400" style="border:1px solid var(--background-color-0);"></canvas></div>
+                <div class="graph"><canvas id="cpu-usage-total-chart" width="400" height="400" style="border:1px solid var(--background-color-0);"></canvas></div>
+            </div>
+            <span id="cpu-usage" class="statistic-value">0%</span>
+        </div>
     </table>
 
     <p id="streamdump"></p>
 
     <p id="server-description">Nodrix is my Node.js server node monitoring tool that provides real-time information about a server's status and performance.</p>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script src="script/static_data.js"></script>
     <script src="script/dynamic_data.js"></script>

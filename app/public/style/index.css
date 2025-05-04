@@ -34,3 +34,30 @@ button {
 .metatext {
     color: var(--text-color-2);
 }
+
+.flexrow {
+    display: flex;
+    flex-direction: row;
+}
+
+
+.graph {
+    height: 30vh;
+}
+
+.statistic {
+    display: inline-flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    background-color: var(--background-color-1);
+    box-sizing: border-box;
+    width: 46%;
+    margin: 2%;
+}
+
+.fullwidth {
+    width: 96%;
+}

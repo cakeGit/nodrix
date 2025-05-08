@@ -1,14 +1,5 @@
-# # FROM node
-# FROM node
-
-# WORKDIR /app
-
-# COPY . .
-
-# RUN npm install
-
-# CMD ["node", "index.js"]
-FROM node:alpine
+# Builder stage
+FROM node:16-slim
 
 WORKDIR /app
 

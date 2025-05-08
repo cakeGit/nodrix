@@ -6,7 +6,7 @@
     --status-ok: #ffffff;
 
     --background-color: #121212;
-    --background-color-1: #2e2e2e;
+    --background-color-1: #151515;
     --text-color: #e0e0e0;
     --text-color-1: #888888;
     --text-color-2  : #555555;
@@ -54,10 +54,10 @@ button {
     border-radius: 0.5rem;
     background-color: var(--background-color-1);
     box-sizing: border-box;
-    width: 46%;
-    margin: 2%;
+    width: 49%;
+    margin: 0.5%;
 }
 
 .fullwidth {
-    width: 96%;
+    width: 98%;
 }

@@ -63,13 +63,13 @@ function populateLineChart(canvasId, labels, data, borderColor=null, backgroundC
         const chart = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: labels,
-                datasets: [{
-                    data: data,
-                    borderColor: borderColor || 'rgba(75, 192, 192, 1)',
-                    backgroundColor: backgroundColor || 'rgba(75, 192, 192, 0.2)',
-                    fill: true,
-                }],
+            labels: labels,
+            datasets: [{
+                data: data,
+                borderColor: borderColor || 'rgba(75, 192, 192, 1)',
+                backgroundColor: backgroundColor || 'rgba(75, 192, 192, 0.2)',
+                fill: true,
+            }],
             },
             options: {
                 responsive: true,
@@ -84,6 +84,8 @@ function populateLineChart(canvasId, labels, data, borderColor=null, backgroundC
                     },
                     y: {
                         beginAtZero: true,
+                        min: 0,
+                        max: 1,
                     },
                 },
             },

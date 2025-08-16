@@ -70,3 +70,9 @@ jobs:
           TAGS: ${{ steps.meta.outputs.tags }}
           DIGEST: ${{ steps.build-and-push.outputs.digest }}
         run: echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}
+      - name: Call Dockerhook
+        if: ${{ github.event_name != 'pull_request' }}
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.DOCKERHOOK_TOKEN }}" \
+            https://dockerhook.oreostack.uk/webhook

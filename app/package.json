@@ -1,6 +1,6 @@
 {
   "name": "nodrix",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "dependencies": {
     "doc999tor-fast-geoip": "^1.1.319",
     "express": "^5.1.0",

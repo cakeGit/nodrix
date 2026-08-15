@@ -41,7 +41,10 @@ function createUptimeElement(uptimeStart) {
 }
 
 function populateServerMeta(meta) {
-    setText('server-platform', meta.os_platform, 'unknown platform');
+    setText('server-platform', meta.os_name ? `${meta.os_name} (${meta.os_platform})` : meta.os_platform, 'unknown os');
+    const modelGroup = document.getElementById('server-model-group');
+    if (modelGroup) modelGroup.style.display = meta.os_model ? '' : 'none';
+    setText('server-model', meta.os_model);
     setText('server-name', meta.name, 'unnamed node');
     setText('server-ip', meta.ip);
     setText('server-region', meta.region);

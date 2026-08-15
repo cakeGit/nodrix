@@ -19,6 +19,14 @@ function readConfig(filePath, baseConfig) {
     }
 }
 
+function readTrimmed(filePath) {
+    try {
+        return fs.readFileSync(filePath, "utf8").trim() || null;
+    } catch {
+        return null;
+    }
+}
+
 const HOST_ROOT = (() => {
     try {
         return fs.statSync("/host").isDirectory() ? "/host" : null;
@@ -32,9 +40,70 @@ const HOST_PROC =
         ? path.join(HOST_ROOT, "proc")
         : null;
 
+const SYS_ROOT = (() => {
+    if (HOST_ROOT && fs.existsSync(path.join(HOST_ROOT, "sys/class/block"))) {
+        return path.join(HOST_ROOT, "sys");
+    }
+    return fs.existsSync("/sys/class/block") ? "/sys" : null;
+})();
+
 const { version } = JSON.parse(
     fs.readFileSync(path.join(__dirname, "package.json"), "utf8")
 );
+
+const JUNK_VALUE = /^(to be filled|default string|not specified|not available|none|unknown|null|oem|system manufacturer|system product name|standard)/i;
+
+function cleanVendorString(value) {
+    const cleaned = value.replace(/\0/g, "").replace(/\s+/g, " ").trim();
+    return cleaned && !JUNK_VALUE.test(cleaned) ? cleaned : null;
+}
+
+function resolveHostname() {
+    return (
+        (HOST_ROOT && readTrimmed(path.join(HOST_ROOT, "etc/hostname"))) ||
+        readTrimmed("/etc/hostname") ||
+        os.hostname() ||
+        null
+    );
+}
+
+function collectSystemModel() {
+    if (SYS_ROOT) {
+        const dmi = path.join(SYS_ROOT, "class/dmi/id");
+        const vendor = cleanVendorString(readTrimmed(path.join(dmi, "sys_vendor")) || "");
+        const product = cleanVendorString(readTrimmed(path.join(dmi, "product_name")) || "");
+        const parts = [vendor, product].filter(Boolean);
+        if (parts.length > 0) return parts.join(" ");
+    }
+    for (const candidate of [
+        HOST_ROOT ? path.join(HOST_ROOT, "proc/device-tree/model") : null,
+        "/proc/device-tree/model",
+    ].filter(Boolean)) {
+        const model = cleanVendorString(readTrimmed(candidate) || "");
+        if (model) return model;
+    }
+    return null;
+}
+
+function collectOsName() {
+    for (const candidate of [
+        HOST_ROOT ? path.join(HOST_ROOT, "etc/os-release") : null,
+        "/etc/os-release",
+        HOST_ROOT ? path.join(HOST_ROOT, "usr/lib/os-release") : null,
+        "/usr/lib/os-release",
+    ].filter(Boolean)) {
+        const release = readTrimmed(candidate);
+        if (!release) continue;
+        const fields = {};
+        for (const line of release.split("\n")) {
+            const match = line.match(/^([A-Z_]+)=(?:"([^"]*)"|(.*?))\s*$/);
+            if (match) fields[match[1]] = match[2] ?? match[3];
+        }
+        const pretty = fields.PRETTY_NAME || fields.NAME;
+        if (pretty) return pretty;
+    }
+    return null;
+}
 
 const config = readConfig(path.join(__dirname, "data", "nodrix_config.json"), {
     name: "unnamed-node",
@@ -50,8 +119,7 @@ const REAL_FS_TYPES = new Set([
     "ntfs", "ntfs3", "apfs", "jfs", "ufs", "f2fs",
 ]);
 
-const fsTypes = new Map();
-const devices = new Map();
+const fsDevices = new Map();
 
 function readPhysicalDrive(baseName) {
     try {
@@ -64,6 +132,35 @@ function readPhysicalDrive(baseName) {
     const digits = parts.match(/^(.+?)(\d+)$/);
     if (digits && /[a-z]$/i.test(digits[1])) return digits[1];
     return parts;
+}
+
+const VIRTUAL_DRIVE = /^(loop\d*|ram\d+|zram\d*|dm-\d+|nbd\d+|md\d+|sr\d+)$/;
+
+function listPhysicalDrives() {
+    if (!SYS_ROOT) return [];
+    const blockDir = path.join(SYS_ROOT, "class/block");
+    let entries;
+    try {
+        entries = fs.readdirSync(blockDir);
+    } catch {
+        return [];
+    }
+    const drives = [];
+    for (const name of entries) {
+        if (VIRTUAL_DRIVE.test(name)) continue;
+        const base = path.join(blockDir, name);
+        try {
+            if (fs.existsSync(path.join(base, "partition"))) continue;
+            const sectors = Number(readTrimmed(path.join(base, "size")));
+            if (!Number.isFinite(sectors) || sectors <= 0) continue;
+            drives.push({
+                device: name,
+                size_bytes: sectors * 512,
+                model: cleanVendorString(readTrimmed(path.join(base, "device/model")) || ""),
+            });
+        } catch {}
+    }
+    return drives;
 }
 
 function resolveStoragePaths() {
@@ -96,11 +193,14 @@ function resolveStoragePaths() {
         }
     }
     const paths = [];
-    for (const { mountpoint, fstype, device } of byDevice.values()) {
-        const monitorPath = HOST_ROOT ? path.join(HOST_ROOT, mountpoint) : mountpoint;
+    for (const { mountpoint, device } of byDevice.values()) {
+        const monitorPath = HOST_ROOT
+            ? mountpoint === HOST_ROOT || mountpoint.startsWith(`${HOST_ROOT}/`)
+                ? mountpoint
+                : path.join(HOST_ROOT, mountpoint)
+            : mountpoint;
         paths.push(monitorPath);
-        fsTypes.set(monitorPath, fstype);
-        devices.set(monitorPath, device);
+        fsDevices.set(monitorPath, device);
     }
     if (paths.length === 0) paths.push(HOST_ROOT || "/");
     return paths.sort((a, b) => {
@@ -115,29 +215,46 @@ function resolveStoragePaths() {
 const storagePaths = resolveStoragePaths();
 
 async function collectStorage() {
-    const byDrive = new Map();
+    const usageByDrive = new Map();
+    const seenFilesystems = new Set();
+    const extras = [];
     for (const p of storagePaths) {
         try {
             const st = await fs.promises.statfs(p);
             const totalBytes = st.blocks * st.bsize;
             if (!totalBytes) continue;
             const usedBytes = totalBytes - st.bfree * st.bsize;
-            const label = p.replace(/^\/host/, "") || "/";
-            const device = devices.get(p);
-            const name = device?.startsWith("/dev/")
+            const device = fsDevices.get(p);
+            const drive = device?.startsWith("/dev/")
                 ? readPhysicalDrive(device.slice(5))
                 : null;
-            const key = name || `mnt:${label}`;
-            const drive = byDrive.get(key) || { name: name || label, total_bytes: 0, used_bytes: 0, mounts: [] };
-            drive.total_bytes += totalBytes;
-            drive.used_bytes += usedBytes;
-            drive.mounts.push(label);
-            byDrive.set(key, drive);
+            if (drive) {
+                if (seenFilesystems.has(device)) continue;
+                seenFilesystems.add(device);
+                const entry = usageByDrive.get(drive) || { used_bytes: 0, total_bytes: 0 };
+                entry.used_bytes += usedBytes;
+                entry.total_bytes += totalBytes;
+                usageByDrive.set(drive, entry);
+            } else {
+                const label = p.replace(/^\/host/, "") || "/";
+                extras.push({ name: label, device: null, total_bytes: totalBytes, used_bytes: usedBytes });
+            }
         } catch {}
     }
-    return [...byDrive.values()]
-        .map((d) => ({ ...d, mounts: d.mounts.sort() }))
-        .sort((a, b) => a.name.localeCompare(b.name));
+
+    const drives = listPhysicalDrives().map((d) => ({
+        name: d.model || d.device,
+        device: d.device,
+        total_bytes: d.size_bytes,
+        used_bytes: usageByDrive.has(d.device) ? usageByDrive.get(d.device).used_bytes : null,
+    }));
+    for (const [device, entry] of usageByDrive) {
+        if (!drives.some((d) => d.device === device)) {
+            drives.push({ name: device, device, total_bytes: entry.total_bytes, used_bytes: entry.used_bytes });
+        }
+    }
+    drives.push(...extras);
+    return drives.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 function collectMemory() {
@@ -257,14 +374,16 @@ try {
 }
 
 const meta = {
-    name: config.name,
+    name: resolveHostname() || config.name,
     version,
     ip,
     region,
     country,
+    os_name: collectOsName(),
+    os_model: collectSystemModel(),
     os_cpu: `${os.cpus().length}x ${os.cpus()[0]?.model || "Unknown Model"}`.trim(),
     os_cpu_cores: os.cpus().length,
-    os_memory: `${Math.round(os.totalmem() / 2 ** 30)}GB`,
+    os_memory: `${Math.ceil(os.totalmem() / 2 ** 30)}GB`,
     os_platform: `${os.platform()}-${os.arch()}`,
     uptime: Date.now(),
     os_uptime: Date.now() - os.uptime() * 1000,

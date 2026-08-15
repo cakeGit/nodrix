@@ -21,11 +21,12 @@
 
     const UNITS = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
     function formatBytes(bytes, decimals = 1) {
+        bytes = Number(bytes);
         if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
-        const exp = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), UNITS.length - 1);
+        const exp = Math.min(Math.max(Math.floor(Math.log(bytes) / Math.log(1024)), 0), UNITS.length - 1);
         const value = bytes / 1024 ** exp;
         const fixed = exp === 0 || value >= 100 ? 0 : decimals;
-        return `${value.toFixed(fixed)} ${UNITS[exp]}`;
+        return `${value.toFixed(fixed)} ${UNITS[exp] ?? 'B'}`;
     }
     const formatRate = (bytesPerSec) => `${formatBytes(bytesPerSec)}/s`;
 
@@ -59,9 +60,18 @@
         },
     });
 
-    const MAX_LIVE_SAMPLES = 120;
+    const HISTORY_WINDOW_MS = 5 * 60 * 1000;
+    const MAX_LIVE_SAMPLES = 600;
     const cpuSeries = [];
     const netSeries = [];
+
+    function pushSample(series, sample) {
+        series.push(sample);
+        const cutoff = sample.t - HISTORY_WINDOW_MS;
+        while (series.length > 1 && (series[0].t < cutoff || series.length > MAX_LIVE_SAMPLES)) {
+            series.shift();
+        }
+    }
 
     const cpuChart = new Chart(document.getElementById('cpu-history-chart'), {
         type: 'line',
@@ -185,8 +195,7 @@
 
     function updateCpu(data) {
         const avgPct = Math.round(data.cpu.avg * 100);
-        cpuSeries.push({ t: data.statistics_timestamp, v: avgPct });
-        if (cpuSeries.length > MAX_LIVE_SAMPLES) cpuSeries.shift();
+        pushSample(cpuSeries, { t: data.statistics_timestamp, v: avgPct });
         cpuChart.data.labels = cpuSeries.map((p) => clockLabel(p.t));
         cpuChart.data.datasets[0].data = cpuSeries.map((p) => p.v);
         cpuChart.update('none');
@@ -223,18 +232,20 @@
         info.className = 'storage-info';
         const name = document.createElement('span');
         name.textContent = drive.name;
-        const usage = document.createElement('span');
-        usage.className = 'metatext';
-        usage.textContent = ' ';
-        if (drive.total_bytes > 0) {
+        const detail = document.createElement('span');
+        detail.className = 'metatext';
+        const parts = [];
+        if (drive.device) parts.push(drive.device);
+        if (drive.total_bytes > 0 && drive.used_bytes != null) {
             const pct = Math.min(100, Math.round((drive.used_bytes / drive.total_bytes) * 100));
-            const mounts = document.createElement('span');
-            mounts.className = 'metatext';
-            mounts.textContent = ` ${formatBytes(drive.used_bytes)} / ${formatBytes(drive.total_bytes)} \u00b7 ${pct}% (${drive.mounts.join(', ')})`;
-            info.append(name, usage, mounts);
+            parts.push(`${formatBytes(drive.used_bytes)} / ${formatBytes(drive.total_bytes)}`, `${pct}%`);
+        } else if (drive.total_bytes > 0) {
+            parts.push(formatBytes(drive.total_bytes), 'no mount visible');
         } else {
-            info.append(name, usage);
+            parts.push('unknown size');
         }
+        detail.textContent = ` \u00b7 ${parts.join(' \u00b7 ')}`;
+        info.append(name, detail);
         row.appendChild(info);
 
         const bar = document.createElement('div');
@@ -242,7 +253,9 @@
         if (drive.total_bytes > 0) {
             const fill = document.createElement('div');
             fill.className = 'bar-fill';
-            const pct = Math.min(100, Math.max(1, (drive.used_bytes / drive.total_bytes) * 100));
+            const pct = drive.used_bytes != null
+                ? Math.min(100, Math.max(1, (drive.used_bytes / drive.total_bytes) * 100))
+                : 0;
             fill.style.width = `${pct}%`;
             bar.appendChild(fill);
         }
@@ -272,8 +285,7 @@
 
     function updateNetwork(data) {
         const n = data.network;
-        netSeries.push({ t: data.statistics_timestamp, rx: n.rx_bytes_s, tx: n.tx_bytes_s });
-        if (netSeries.length > MAX_LIVE_SAMPLES) netSeries.shift();
+        pushSample(netSeries, { t: data.statistics_timestamp, rx: n.rx_bytes_s, tx: n.tx_bytes_s });
         networkChart.data.labels = netSeries.map((p) => clockLabel(p.t));
         networkChart.data.datasets[0].data = netSeries.map((p) => p.rx);
         networkChart.data.datasets[1].data = netSeries.map((p) => p.tx);

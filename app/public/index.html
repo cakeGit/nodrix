@@ -7,64 +7,83 @@
     <title>Nodrix</title>
 </head>
 <body>
-    <h1>
-        <span class="logotitle">Nodrix</span>
-        <span class="metatext">-</span>
-        <span id="server-name">Node?</span>
-        <span class="metatext">-</span>
-        <span >Status</span>
-        <span class="metatext">[</span>
-        <span id="operating-status" style="background-color: var(--status-ok-bg);color: var(--status-pk);">OK</span>
-        <span class="metatext">]</span>
-    </h1>
-    <p>
-        <span class="metatext">Server</span>
-        <span id="server-platform"></span>
-        <span class="metatext">/ Nodrix</span>
-        <span id="nodrix-version">v0.1.2</span>
-        <span class="metatext">/ Ip</span>
-        <span id="server-ip"></span>
-        <span class="metatext">/ Region</span>
-        <span id="server-region"></span>
-        <span class="metatext">/ Country</span>
-        <span id="server-country"></span>
-        <span class="metatext">/ CPU</span>
-        <span id="server-cpu"></span>
-        <span class="metatext">/ RAM</span>
-        <span id="server-memory"></span>
-        <span class="metatext">/ Uptime</span>
-        <span id="server-uptime"></span>
-        <span class="metatext">/ OS uptime</span>
-        <span id="server-os-uptime"></span>
-    </p>
+    <header>
+        <h1>
+            <span class="logotitle">Nodrix</span>
+            <span class="metatext">-</span>
+            <span id="server-name">node?</span>
+            <span class="metatext">-</span>
+            <span class="metatext">status</span>
+            <span class="metatext">[</span>
+            <span id="operating-status" class="status status-unknown">BOOT</span>
+            <span class="metatext">]</span>
+        </h1>
+        <p class="metabar">
+            <span class="metatext">Server</span> <span id="server-platform"></span>
+            <span class="metatext">/ Nodrix</span> <span id="nodrix-version"></span>
+            <span class="metatext">/ Ip</span> <span id="server-ip"></span>
+            <span class="metatext">/ Region</span> <span id="server-region"></span>
+            <span class="metatext">/ Country</span> <span id="server-country"></span>
+            <span class="metatext">/ CPU</span> <span id="server-cpu"></span>
+            <span class="metatext">/ RAM</span> <span id="server-memory"></span>
+            <span class="metatext">/ Uptime</span> <span id="server-uptime"></span>
+            <span class="metatext">/ OS uptime</span> <span id="server-os-uptime"></span>
+        </p>
+    </header>
 
-    <table class="statisticsgrid">
-        <div class="statistic">
-            <span class="cattext">Nodrix</span>
-            <div class="graph"><canvas id="nodrix-os-ram-usage-chart" width="400" height="400" style="border:1px solid var(--background-color-0);"></canvas></div>
-            <span id="nodrix-ram-usage" class="statistic-value">0MB</span>
-        </div>
-        <div class="statistic">
-            <span class="cattext">RAM</span>
-            <div class="graph"><canvas id="ram-usage-chart" width="400" height="400" style="border:1px solid var(--background-color-0);"></canvas></div>
-            <span id="ram-usage" class="statistic-value">0GB</span>
-        </div>
-        <br>
-        <div class="fullwidth statistic">
-            <span class="cattext">CPU</span>
-            <div class="flexrow" style="justify-content: space-around;">
-                <div class="graph"><canvas id="cpu-usage-graph" width="800" height="400" style="border:1px solid var(--background-color-0);"></canvas></div>
-                <div class="graph"><canvas id="cpu-usage-total-chart" width="400" height="400" style="border:1px solid var(--background-color-0);"></canvas></div>
+    <main class="grid">
+        <section class="statistic">
+            <div class="statistic-head">
+                <span class="cattext">CPU</span>
+                <span id="cpu-usage" class="statistic-value">0%</span>
             </div>
-            <span id="cpu-usage" class="statistic-value">0%</span>
-        </div>
-    </table>
+            <div class="chart"><canvas id="cpu-history-chart" aria-label="CPU usage over the last minutes"></canvas></div>
+            <div class="chart chart-half"><canvas id="cpu-cores-chart" aria-label="CPU usage per core"></canvas></div>
+            <div class="statistic-sub">
+                <span class="metatext">load</span> <span id="cpu-loadavg">-</span>
+                <span class="metatext">cores</span> <span id="cpu-cores">-</span>
+            </div>
+        </section>
 
-    <p id="streamdump"></p>
+        <section class="statistic">
+            <div class="statistic-head">
+                <span class="cattext">RAM</span>
+                <span id="ram-usage" class="statistic-value">0 GB / 0 GB</span>
+            </div>
+            <div class="chart"><canvas id="ram-usage-chart" aria-label="Memory usage"></canvas></div>
+            <div class="statistic-sub">
+                <span class="metatext">swap</span> <span id="ram-swap">-</span>
+                <span class="metatext">avail</span> <span id="ram-available">-</span>
+            </div>
+        </section>
 
-    <p id="server-description">Nodrix is my Node.js server node monitoring tool that provides real-time information about a server's status and performance.</p>
+        <section class="statistic">
+            <div class="statistic-head">
+                <span class="cattext">Storage</span>
+                <span id="storage-summary" class="statistic-value">-</span>
+            </div>
+            <div id="storage-list" class="storage-list"></div>
+        </section>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <section class="statistic">
+            <div class="statistic-head">
+                <span class="cattext">Network</span>
+                <span id="network-usage" class="statistic-value">&#8595; 0 B/s &#8593; 0 B/s</span>
+            </div>
+            <div class="chart"><canvas id="network-chart" aria-label="Network throughput"></canvas></div>
+            <div class="statistic-sub">
+                <span class="metatext">total rx</span> <span id="network-total-rx">-</span>
+                <span class="metatext">tx</span> <span id="network-total-tx">-</span>
+            </div>
+        </section>
+
+    </main>
+
+    <footer>
+        <p id="server-description">Nodrix is my Node.js server node monitoring tool that provides real-time information about a server's status and performance.</p>
+    </footer>
+
+    <script src="vendor/chart.umd.js"></script>
 
     <script src="script/static_data.js"></script>
     <script src="script/dynamic_data.js"></script>

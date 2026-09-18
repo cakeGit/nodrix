@@ -319,11 +319,11 @@
     let retryDelay = 1000;
 
     function connect() {
-        setStatus('warn', 'CONNECT');
+        setStatus('warn', 'OFFLINE');
         const socket = new WebSocket(socketUrl);
         socket.addEventListener('open', () => {
             retryDelay = 1000;
-            setStatus('ok', 'OK');
+            setStatus('ok', 'ONLINE');
         });
         socket.addEventListener('message', onMessage);
         socket.addEventListener('close', () => {

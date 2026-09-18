@@ -15,7 +15,7 @@
             <span class="metatext">-</span>
             <span class="metatext">status</span>
             <span class="metatext">[</span>
-            <span id="operating-status" class="status status-unknown">BOOT</span>
+            <span id="operating-status" class="status status-unknown">OFFLINE</span>
             <span class="metatext">]</span>
         </h1>
         <p class="metabar">
@@ -33,6 +33,14 @@
     </header>
 
     <main class="grid">
+        <section id="overview-section" class="statistic statistic-overview" hidden>
+            <div class="statistic-head">
+                <span class="cattext">Nodes</span>
+                <span id="overview-summary" class="statistic-value">-</span>
+            </div>
+            <div id="overview-list" class="overview-list"></div>
+        </section>
+
         <section class="statistic">
             <div class="statistic-head">
                 <span class="cattext">CPU</span>
@@ -88,5 +96,6 @@
 
     <script src="script/static_data.js"></script>
     <script src="script/dynamic_data.js"></script>
+    <script src="script/overview.js"></script>
 </body>
 </html>

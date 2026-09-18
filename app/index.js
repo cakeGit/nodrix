@@ -110,7 +110,42 @@ const config = readConfig(path.join(__dirname, "data", "nodrix_config.json"), {
     sample_interval_ms: 5_000,
     storage_paths: null,
     proc_path: HOST_PROC || "/proc",
+    nodes: [
+        { name: "node0", url: "https://nodrix0.oreostack.uk" },
+        { name: "node1", url: "https://nodrix1.oreostack.uk" },
+        { name: "node2", url: "https://nodrix2.oreostack.uk" },
+    ],
 });
+
+function normalizeNodes(raw) {
+    const list = Array.isArray(raw) ? raw : [];
+    const seen = new Set();
+    const out = [];
+    for (const entry of list.slice(0, 12)) {
+        let url = null;
+        let name = null;
+        if (typeof entry === "string") {
+            url = entry.trim();
+        } else if (entry && typeof entry === "object") {
+            url = String(entry.url || "").trim();
+            if (entry.name) name = String(entry.name);
+        }
+        if (!url) continue;
+        url = url.replace(/\/+$/, "");
+        if (!/^https?:\/\//i.test(url)) continue;
+        const key = url.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push({ name, url });
+    }
+    return out;
+}
+
+const overviewNodes = normalizeNodes(
+    process.env.NODRIX_NODES !== undefined
+        ? process.env.NODRIX_NODES.split(",").map((s) => s.trim()).filter(Boolean)
+        : config.nodes
+);
 
 const procFile = (name) => path.join(config.proc_path, name);
 
@@ -361,6 +396,16 @@ function collectNetworkRate() {
 
 const app = express();
 
+app.use((req, res, next) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    if (req.method === "OPTIONS") {
+        res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+        res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+        return res.sendStatus(204);
+    }
+    next();
+});
+
 let ip = "unknown";
 let region = "unknown";
 let country = "unknown";
@@ -393,6 +438,84 @@ app.get("/meta", (req, res) => {
     res.json(meta);
 });
 
+function collectSummary() {
+    const cpu = collectCpu();
+    const memory = collectMemory();
+    const network = collectNetworkRate();
+    return {
+        name: meta.name,
+        version: meta.version,
+        statistics_timestamp: Date.now(),
+        uptime: meta.uptime,
+        os_uptime: meta.os_uptime,
+        cpu_avg: cpu.avg,
+        cpu_cores: cpu.cores.length,
+        loadavg: cpu.loadavg,
+        mem_used_bytes: memory.used_bytes,
+        mem_total_bytes: memory.total_bytes,
+        net_rx_bytes_s: network.rx_bytes_s,
+        net_tx_bytes_s: network.tx_bytes_s,
+    };
+}
+
+app.get("/api/summary", (req, res) => {
+    res.json({ ...collectSummary(), online: true });
+});
+
+async function fetchPeerSummary(url, timeoutMs = 4000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const response = await fetch(`${url}/api/summary`, { signal: controller.signal });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        return { ...data, url, online: true };
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+app.get("/api/overview", async (req, res) => {
+    const requestHost = String(req.get("host") || "").toLowerCase();
+    const peers = await Promise.all(
+        overviewNodes.map(async ({ name, url }) => {
+            let isSelf = false;
+            try {
+                isSelf = new URL(url).host.toLowerCase() === requestHost;
+            } catch {}
+            if (isSelf) {
+                return { ...collectSummary(), name: name || meta.name, url, online: true, self: true };
+            }
+            try {
+                const summary = await fetchPeerSummary(url);
+                return {
+                    ...summary,
+                    name: name || summary.name || url,
+                    url,
+                    online: true,
+                    self: false,
+                };
+            } catch {
+                return {
+                    name: name || url,
+                    url,
+                    online: false,
+                    self: false,
+                    statistics_timestamp: Date.now(),
+                    cpu_avg: null,
+                    cpu_cores: null,
+                    loadavg: null,
+                    mem_used_bytes: null,
+                    mem_total_bytes: null,
+                    net_rx_bytes_s: null,
+                    net_tx_bytes_s: null,
+                };
+            }
+        })
+    );
+    res.json({ nodes: peers });
+});
+
 app.use(express.static("public"));
 
 const server = app.listen(port, () => {
@@ -401,6 +524,11 @@ const server = app.listen(port, () => {
         `monitoring mounts: ${storagePaths.map((p) => p.replace(/^\/host/, "") || "/").join(", ")}`
     );
     console.log(`proc source: ${config.proc_path}`);
+    console.log(
+        overviewNodes.length > 0
+            ? `overview nodes: ${overviewNodes.map((n) => n.url).join(", ")}`
+            : "overview nodes: none configured"
+    );
 });
 
 const activeConnections = new Set();

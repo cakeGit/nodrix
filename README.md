@@ -28,6 +28,7 @@ docker run -d -p 8000:8000 \
 | `storage_paths` | auto-detect | list of mount paths to monitor (e.g. `["/"]`); auto-detect enumerates real filesystems |
 | `proc_path` | `/proc` (`/host/proc` if mounted) | procfs source for meminfo/net/dev/mounts |
 | `sample_interval_ms` | `5000` | how often live stats are collected/broadcast |
+| `nodes` | `[{name: "node0", url: "https://nodrix0.oreostack.uk"}, ...]` | instances shown in the top Nodes overview; strings or `{name, url}` objects (configured `name` is displayed); `[]` hides it. `NODRIX_NODES` env (comma-separated URLs) overrides |
 
 ## Development
 
